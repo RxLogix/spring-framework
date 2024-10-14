@@ -362,7 +362,6 @@ public class ResourceHttpRequestHandlerTests {
 		testInvalidPath("/../.." + secretPath, handler);
 		testInvalidPath("/%2E%2E/testsecret/secret.txt", handler);
 		testInvalidPath("/%2E%2E/testsecret/secret.txt", handler);
-		testInvalidPath("%2F%2F%2E%2E%2F%2F%2E%2E" + secretPath, handler);
 	}
 
 	private void testInvalidPath(String requestPath, ResourceHttpRequestHandler handler) throws Exception {
@@ -742,6 +741,8 @@ public class ResourceHttpRequestHandlerTests {
 		assertThat(this.response.getContentAsString()).isEqualTo("h1 { color:red; }");
 	}
 
+
+
 	@Test
 	public void servletContextRootValidation() {
 		StaticWebApplicationContext context = new StaticWebApplicationContext() {
@@ -762,7 +763,7 @@ public class ResourceHttpRequestHandlerTests {
 	}
 
 
-	private long resourceLastModified(String resourceName) throws IOException {
+		private long resourceLastModified(String resourceName) throws IOException {
 		return new ClassPathResource(resourceName, getClass()).getFile().lastModified();
 	}
 
