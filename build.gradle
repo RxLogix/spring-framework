@@ -1,4 +1,5 @@
 plugins {
+	id 'maven-publish'
 	id 'io.spring.dependency-management' version '1.0.11.RELEASE' apply false
 	id 'io.spring.nohttp' version '0.0.10'
 	id 'io.freefair.aspectj' version '6.2.0' apply false
@@ -337,6 +338,10 @@ configure([rootProject] + javaProjects) { project ->
 		systemProperty("java.awt.headless", "true")
 		systemProperty("testGroups", project.properties.get("testGroups"))
 		systemProperty("io.netty.leakDetection.level", "paranoid")
+	    reports {
+	        junitXml.enabled = false
+	        html.enabled = true
+	    }               
 	}
 
 	checkstyle {
@@ -404,6 +409,24 @@ configure(moduleProjects) { project ->
 	apply from: "${rootDir}/gradle/spring-module.gradle"
 }
 
+
+// Configuration for the subprojects to ensure all are published
+configure(subprojects) { subproject ->
+	apply plugin: 'maven-publish'
+	publishing {
+		repositories {
+			maven {
+				credentials {
+	                username = System.getenv("NEXUS_USERNAME")
+	                password = System.getenv("NEXUS_PASSWORD")
+	            }
+	            url = uri(System.getenv("NEXUS_URL"))
+	            allowInsecureProtocol = System.getenv("NEXUS_ALLOW_INSECURE_PROTOCOL")
+			}
+		}
+	}
+}
+
 configure(rootProject) {
 	description = "Spring Framework"
 
@@ -441,5 +464,4 @@ configure(rootProject) {
 			}
 		}
 	}
-
 }
