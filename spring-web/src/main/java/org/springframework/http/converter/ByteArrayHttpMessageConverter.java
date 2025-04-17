@@ -56,7 +56,12 @@ public class ByteArrayHttpMessageConverter extends AbstractHttpMessageConverter<
 		long contentLength = inputMessage.getHeaders().getContentLength();
 		ByteArrayOutputStream bos =
 				new ByteArrayOutputStream(contentLength >= 0 ? (int) contentLength : StreamUtils.BUFFER_SIZE);
-		StreamUtils.copy(inputMessage.getBody(), bos);
+		if(contentLength >= 0 && contentLength < Integer.MAX_VALUE) {
+			StreamUtils.copyRange(inputMessage.getBody(), bos, 0, (int) contentLength - 1 );
+		}
+		else {
+			StreamUtils.copy(inputMessage.getBody(), bos);
+		}
 		return bos.toByteArray();
 	}
 
