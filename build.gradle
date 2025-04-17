@@ -420,7 +420,7 @@ configure(subprojects) { subproject ->
 	                username = System.getenv("NEXUS_USERNAME")
 	                password = System.getenv("NEXUS_PASSWORD")
 	            }
-	            url = uri(System.getenv("NEXUS_URL"))
+	            url = System.getenv("NEXUS_URL")
 	            allowInsecureProtocol = System.getenv("NEXUS_ALLOW_INSECURE_PROTOCOL")
 			}
 		}
