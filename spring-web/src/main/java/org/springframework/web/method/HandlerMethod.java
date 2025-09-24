@@ -393,10 +393,24 @@ public class HandlerMethod {
 		List<Annotation[][]> parameterAnnotations = this.interfaceParameterAnnotations;
 		if (parameterAnnotations == null) {
 			parameterAnnotations = new ArrayList<>();
-			for (Class<?> ifc : ClassUtils.getAllInterfacesForClassAsSet(this.method.getDeclaringClass())) {
-				for (Method candidate : ifc.getMethods()) {
-					if (isOverrideFor(candidate)) {
-						parameterAnnotations.add(candidate.getParameterAnnotations());
+			Class<?> clazz = this.method.getDeclaringClass();
+			while (clazz != null) {
+				for (Class<?> ifc : clazz.getInterfaces()) {
+					for (Method candidate : ifc.getMethods()) {
+						if (isOverrideFor(candidate)) {
+							parameterAnnotations.add(candidate.getParameterAnnotations());
+						}
+					}
+				}
+				clazz = clazz.getSuperclass();
+				if (clazz == Object.class) {
+					clazz = null;
+				}
+				if (clazz != null) {
+					for (Method candidate : clazz.getMethods()) {
+						if (isOverrideFor(candidate)) {
+							parameterAnnotations.add(candidate.getParameterAnnotations());
+						}
 					}
 				}
 			}
@@ -416,7 +430,7 @@ public class HandlerMethod {
 		}
 		for (int i = 0; i < paramTypes.length; i++) {
 			if (paramTypes[i] !=
-					ResolvableType.forMethodParameter(candidate, i, this.method.getDeclaringClass()).resolve()) {
+					ResolvableType.forMethodParameter(candidate, i, this.method.getDeclaringClass()).toClass()) {
 				return false;
 			}
 		}
