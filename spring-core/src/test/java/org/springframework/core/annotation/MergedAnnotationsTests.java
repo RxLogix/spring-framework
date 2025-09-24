@@ -832,6 +832,15 @@ class MergedAnnotationsTests {
 	}
 
 	@Test
+	void getFromMethodWithUnresolvedGenericsInGenericTypeHierarchy() {
+		// The following method is GenericAbstractSuperclass.processOneAndTwo(java.lang.Long, C),
+		// where 'C' is an unresolved generic, for which ResolvableType.resolve() returns null.
+		Method method = ClassUtils.getMethod(GenericInterfaceImpl.class, "processOneAndTwo", Long.class, Object.class);
+		assertThat(MergedAnnotations.from(method, SearchStrategy.TYPE_HIERARCHY)
+				.get(Transactional.class).isDirectlyPresent()).isTrue();
+	}
+
+	@Test
 	void getFromMethodWithInterfaceOnSuper() throws Exception {
 		Method method = SubOfImplementsInterfaceWithAnnotatedMethod.class.getMethod("foo");
 		assertThat(MergedAnnotations.from(method, SearchStrategy.TYPE_HIERARCHY).get(
@@ -3617,6 +3626,25 @@ class MergedAnnotationsTests {
 
 	static void assertNotSynthesized(Annotation annotation) {
 		assertThat(AnnotationUtils.isSynthesizedAnnotation(annotation)).as("synthesized annotation").isFalse();
+	}
+
+	interface GenericInterface<A, B> {
+
+		@Transactional
+		void processOneAndTwo(A value1, B value2);
+	}
+
+	abstract static class GenericAbstractSuperclass<C> implements GenericInterface<Long, C> {
+
+		@Override
+		public void processOneAndTwo(Long value1, C value2) {
+		}
+	}
+
+	static class GenericInterfaceImpl extends GenericAbstractSuperclass<String> {
+		// The compiler does not require us to declare a concrete
+		// processOneAndTwo(Long, String) method, and we intentionally
+		// do not declare one here.
 	}
 
 }

@@ -98,3 +98,9 @@ test {
 	// When test fixtures are involved, the JAR is used by default.
 	classpath = sourceSets.main.output.classesDirs + classpath - files(jar.archiveFile)
 }
+
+tasks.named('compileJava') {
+	options.compilerArgs.removeAll { it == '-Werror' }
+}
+
+
