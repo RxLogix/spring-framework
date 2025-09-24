@@ -57,6 +57,7 @@ task api(type: Javadoc) {
 	}
 	maxMemory = "1024m"
 	destinationDir = file("$buildDir/docs/javadoc")
+	enabled = false
 }
 
 /**
