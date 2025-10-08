@@ -27,7 +27,6 @@ import java.util.Map;
 
 import freemarker.template.Configuration;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -117,7 +116,6 @@ public class FreeMarkerMacroTests {
 		assertThat(getMacroOutput("NAME")).containsExactly("Darren");
 	}
 
-	@Disabled
 	@Test
 	public void age() throws Exception {
 		assertThat(getMacroOutput("AGE")).containsExactly("99");
