@@ -57,10 +57,7 @@ task api(type: Javadoc) {
 	}
 	maxMemory = "1024m"
 	destinationDir = file("$buildDir/docs/javadoc")
-	enabled = true
 }
-
-
 
 /**
  * Produce KDoc for all Spring Framework modules in "build/docs/kdoc"
