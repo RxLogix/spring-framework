@@ -21,6 +21,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -769,6 +770,24 @@ public class RequestResponseBodyMethodProcessorTests {
 		assertThat(value).isEqualTo("foo");
 	}
 
+	@Test  // gh-25788
+	void resolveArgumentTypeVariableWithAbstractMethod() throws Exception {
+		this.servletRequest.setContent("\"foo\"".getBytes(StandardCharsets.UTF_8));
+		this.servletRequest.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+		Method method = SubControllerImplementingAbstractMethod.class.getMethod("handle", Object.class);
+		HandlerMethod handlerMethod = new HandlerMethod(new SubControllerImplementingAbstractMethod(), method);
+		MethodParameter methodParameter = handlerMethod.getMethodParameters()[0];
+
+		List<HttpMessageConverter<?>> converters = Arrays.asList(new MappingJackson2HttpMessageConverter());
+		RequestResponseBodyMethodProcessor processor = new RequestResponseBodyMethodProcessor(converters);
+
+		assertThat(processor.supportsParameter(methodParameter)).isTrue();
+		String value = (String) processor.readWithMessageConverters(
+				this.request, methodParameter, methodParameter.getGenericParameterType());
+		assertThat(value).isEqualTo("foo");
+	}
+
 	private void assertContentDisposition(RequestResponseBodyMethodProcessor processor,
 			boolean expectContentDisposition, String requestURI, String comment) throws Exception {
 
@@ -1125,6 +1144,20 @@ public class RequestResponseBodyMethodProcessorTests {
 
 
 	static class SubControllerImplementingInterface extends MyControllerImplementingInterface {
+
+		@Override
+		public String handle(String arg) {
+			return arg;
+		}
+	}
+
+	abstract static class MyControllerWithAbstractMethod<A> {
+
+		public abstract A handle(@RequestBody A arg);
+	}
+
+
+	static class SubControllerImplementingAbstractMethod extends MyControllerWithAbstractMethod<String> {
 
 		@Override
 		public String handle(String arg) {
