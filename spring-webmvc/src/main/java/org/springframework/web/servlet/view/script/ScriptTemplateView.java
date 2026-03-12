@@ -42,13 +42,16 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.core.NamedThreadLocal;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.lang.Nullable;
 import org.springframework.scripting.support.StandardScriptEvalException;
 import org.springframework.scripting.support.StandardScriptUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.support.RequestContextUtils;
 import org.springframework.web.servlet.view.AbstractUrlBasedView;
@@ -351,15 +354,72 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 
 	@Nullable
 	protected Resource getResource(String location) {
-		if (this.resourceLoaderPaths != null) {
+		String normalizedLocation = StringUtils.cleanPath(location);
+		if (this.resourceLoaderPaths != null && !shouldIgnoreInputPath(normalizedLocation)) {
+			ApplicationContext context = obtainApplicationContext();
 			for (String path : this.resourceLoaderPaths) {
-				Resource resource = obtainApplicationContext().getResource(path + location);
-				if (resource.exists()) {
-					return resource;
+				Resource resource = context.getResource(path + normalizedLocation);
+				try {
+					if (resource.exists() && isResourceUnderLocation(context.getResource(path), resource)) {
+						return resource;
+					}
+				}
+				catch (IOException ex) {
+					if (logger.isDebugEnabled()) {
+						String error = "Skip location [" + normalizedLocation + "] due to error";
+						if (logger.isTraceEnabled()) {
+							logger.trace(error, ex);
+						}
+						else {
+							logger.debug(error + ": " + ex.getMessage());
+						}
+					}
 				}
 			}
 		}
 		return null;
+	}
+
+	private static boolean shouldIgnoreInputPath(String path) {
+		if (!StringUtils.hasText(path)) {
+			return true;
+		}
+		if (path.contains("WEB-INF") || path.contains("META-INF") ||
+				path.contains("../") || path.contains("..\\")) {
+			return true;
+		}
+		if (path.contains(":/")) {
+			String relativePath = (path.charAt(0) == '/' ? path.substring(1) : path);
+			if (ResourceUtils.isUrl(relativePath) || relativePath.startsWith("url:")) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isResourceUnderLocation(Resource location, Resource resource) throws IOException {
+		if (resource.getClass() != location.getClass()) {
+			return false;
+		}
+		String resourcePath;
+		String locationPath;
+		if (resource instanceof UrlResource) {
+			resourcePath = resource.getURL().toExternalForm();
+			locationPath = StringUtils.cleanPath(location.getURL().toString());
+		}
+		else if (resource instanceof ClassPathResource) {
+			resourcePath = ((ClassPathResource) resource).getPath();
+			locationPath = StringUtils.cleanPath(((ClassPathResource) location).getPath());
+		}
+		else {
+			resourcePath = resource.getURL().getPath();
+			locationPath = StringUtils.cleanPath(location.getURL().getPath());
+		}
+		if (locationPath.equals(resourcePath)) {
+			return true;
+		}
+		locationPath = (locationPath.endsWith("/") || locationPath.isEmpty() ? locationPath : locationPath + "/");
+		return resourcePath.startsWith(locationPath);
 	}
 
 	protected ScriptTemplateConfig autodetectViewConfig() throws BeansException {
