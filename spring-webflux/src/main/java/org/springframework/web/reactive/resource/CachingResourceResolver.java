@@ -17,7 +17,6 @@
 package org.springframework.web.reactive.resource;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -133,15 +132,12 @@ public class CachingResourceResolver extends AbstractResourceResolver {
 
 	@Nullable
 	private String getContentCodingKey(ServerWebExchange exchange) {
-		String header = exchange.getRequest().getHeaders().getFirst("Accept-Encoding");
-		if (!StringUtils.hasText(header)) {
+		List<String> acceptedCodings = EncodedResourceResolver.parseAcceptEncoding(exchange);
+		if (acceptedCodings.isEmpty()) {
 			return null;
 		}
-		return Arrays.stream(StringUtils.tokenizeToStringArray(header, ","))
-				.map(token -> {
-					int index = token.indexOf(';');
-					return (index >= 0 ? token.substring(0, index) : token).trim().toLowerCase();
-				})
+		return acceptedCodings
+				.stream()
 				.filter(this.contentCodings::contains)
 				.sorted()
 				.collect(Collectors.joining(","));
