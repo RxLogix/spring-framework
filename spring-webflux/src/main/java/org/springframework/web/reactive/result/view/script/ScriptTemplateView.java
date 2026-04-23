@@ -18,6 +18,8 @@ package org.springframework.web.reactive.result.view.script;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Map;
@@ -51,6 +53,7 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.result.view.AbstractUrlBasedView;
+import org.springframework.web.util.UriUtils;
 import org.springframework.web.server.ServerWebExchange;
 
 /**
@@ -337,9 +340,10 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 	}
 
 	private static boolean shouldIgnoreInputPath(String path) {
-		if (!StringUtils.hasText(path)) {
-			return true;
-		}
+		return (!StringUtils.hasText(path) || isInvalidPath(path) || isInvalidEncodedPath(path));
+	}
+
+	private static boolean isInvalidPath(String path) {
 		if (path.contains("WEB-INF") || path.contains("META-INF") ||
 				path.contains("../") || path.contains("..\\")) {
 			return true;
@@ -351,6 +355,29 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 			}
 		}
 		return false;
+	}
+
+	private static boolean isInvalidEncodedPath(String path) {
+		String decoded = decode(path);
+		if (decoded.contains("%")) {
+			decoded = decode(decoded);
+		}
+		if (!StringUtils.hasText(decoded)) {
+			return true;
+		}
+		if (isInvalidPath(decoded)) {
+			return true;
+		}
+		return isInvalidPath(StringUtils.cleanPath(decoded));
+	}
+
+	private static String decode(String path) {
+		try {
+			return UriUtils.decode(path, StandardCharsets.UTF_8);
+		}
+		catch (Exception ex) {
+			return "";
+		}
 	}
 
 	private static boolean isResourceUnderLocation(Resource location, Resource resource) throws IOException {
@@ -375,7 +402,22 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 			return true;
 		}
 		locationPath = (locationPath.endsWith("/") || locationPath.isEmpty() ? locationPath : locationPath + "/");
-		return resourcePath.startsWith(locationPath);
+		return (resourcePath.startsWith(locationPath) && !isInvalidEncodedResourcePath(resourcePath));
+	}
+
+	private static boolean isInvalidEncodedResourcePath(String resourcePath) {
+		if (resourcePath.contains("%")) {
+			try {
+				String decoded = URLDecoder.decode(resourcePath, "UTF-8");
+				if (decoded.contains("../") || decoded.contains("..\\")) {
+					return true;
+				}
+			}
+			catch (UnsupportedEncodingException | IllegalArgumentException ex) {
+				// ignore
+			}
+		}
+		return false;
 	}
 
 	protected ScriptTemplateConfig autodetectViewConfig() throws BeansException {
