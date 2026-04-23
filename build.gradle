@@ -379,14 +379,16 @@ configure([rootProject] + javaProjects) { project ->
 			"https://docs.jboss.org/jbossas/javadoc/7.1.2.Final/",
 			"https://tiles.apache.org/tiles-request/apidocs/",
 			"https://tiles.apache.org/framework/apidocs/",
-			"https://www.eclipse.org/aspectj/doc/released/aspectj5rt-api/",
+			// Disabled: Java 8's javadoc cannot fetch through eclipse.dev's nginx/TLS (URL returns 200 via curl but javadoc reports "Error fetching URL").
+			// "https://eclipse.dev/aspectj/doc/released/aspectj5rt-api/",
 			// Temporarily commenting out Ehcache and Quartz since javadoc on JDK 8 cannot access them.
 			// "https://www.ehcache.org/apidocs/2.10.4/",
 			// "https://www.quartz-scheduler.org/api/2.3.0/",
 			"https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/2.12.7/",
 			"https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-databind/2.12.7/",
 			"https://www.javadoc.io/doc/com.fasterxml.jackson.dataformat/jackson-dataformat-xml/2.12.7/",
-			"https://hc.apache.org/httpcomponents-client-5.1.x/current/httpclient5/apidocs/",
+			// Disabled: hc.apache.org httpcomponents-client apidocs return HTTP 403 (all versions).
+			// "https://hc.apache.org/httpcomponents-client-5.1.x/current/httpclient5/apidocs/",
 			"https://projectreactor.io/docs/test/release/api/",
 			"https://junit.org/junit4/javadoc/4.13.2/",
 			// Disabling linking to JUnit 5.8.2, since the `package-list` file no longer exists due to
