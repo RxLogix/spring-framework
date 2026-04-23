@@ -53,8 +53,8 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.result.view.AbstractUrlBasedView;
-import org.springframework.web.util.UriUtils;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.util.UriUtils;
 
 /**
  * An {@link AbstractUrlBasedView} subclass designed to run any template library
