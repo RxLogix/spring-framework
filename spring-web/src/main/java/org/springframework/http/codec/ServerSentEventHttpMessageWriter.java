@@ -50,6 +50,7 @@ import org.springframework.util.StringUtils;
  * @author Sebastien Deleuze
  * @author Arjen Poutsma
  * @author Rossen Stoyanchev
+ * @author Brian Clozel
  * @since 5.0
  */
 public class ServerSentEventHttpMessageWriter implements HttpMessageWriter<Object> {
@@ -152,8 +153,8 @@ public class ServerSentEventHttpMessageWriter implements HttpMessageWriter<Objec
 				result = Flux.just(encodeText(sb + "\n", mediaType, factory));
 			}
 			else if (data instanceof String) {
-				data = StringUtils.replace((String) data, "\n", "\ndata:");
-				result = Flux.just(encodeText(sb + (String) data + "\n\n", mediaType, factory));
+				writeStringData((String) data, sb);
+				result = Flux.just(encodeText(sb.toString(), mediaType, factory));
 			}
 			else {
 				result = encodeEvent(sb, data, dataType, mediaType, factory, hints);
@@ -161,6 +162,31 @@ public class ServerSentEventHttpMessageWriter implements HttpMessageWriter<Objec
 
 			return result.doOnDiscard(PooledDataBuffer.class, DataBufferUtils::release);
 		});
+	}
+
+	private void writeStringData(String input, StringBuilder sb) {
+		if (input.indexOf('\n') == -1 && input.indexOf('\r') == -1) {
+			sb.append(input);
+		}
+		else {
+			int length = input.length();
+			for (int i = 0; i < length; i++) {
+				char c = input.charAt(i);
+				if (c == '\r') {
+					if (i + 1 < length && input.charAt(i + 1) == '\n') {
+						i++;
+					}
+					sb.append("\ndata:");
+				}
+				else if (c == '\n') {
+					sb.append("\ndata:");
+				}
+				else {
+					sb.append(c);
+				}
+			}
+		}
+		sb.append("\n\n");
 	}
 
 	@SuppressWarnings("unchecked")

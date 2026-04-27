@@ -31,6 +31,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import okhttp3.mockwebserver.Dispatcher;
@@ -274,6 +275,50 @@ class ResourceTests {
 			Resource resource = new FileSystemResource("dir/");
 			Resource relative = resource.createRelative("subdir");
 			assertThat(relative).isEqualTo(new FileSystemResource("dir/subdir"));
+		}
+
+		@Test
+		void isReadableChecksExistsFirst() {
+			AtomicBoolean existsCalled = new AtomicBoolean();
+			AtomicBoolean canReadCalled = new AtomicBoolean();
+			File file = new File("/dev/my.txt") {
+				@Override
+				public boolean exists() {
+					existsCalled.set(true);
+					return false;
+				}
+				@Override
+				public boolean canRead() {
+					canReadCalled.set(true);
+					return false;
+				}
+			};
+			Resource resource = new FileSystemResource(file);
+			assertThat(resource.isReadable()).isFalse();
+			assertThat(existsCalled).isTrue();
+			assertThat(canReadCalled).isFalse();
+		}
+
+		@Test
+		void isReadableChecksCanReadAfterExists() {
+			AtomicBoolean existsCalled = new AtomicBoolean();
+			AtomicBoolean canReadCalled = new AtomicBoolean();
+			File file = new File("/dev/my.txt") {
+				@Override
+				public boolean exists() {
+					existsCalled.set(true);
+					return true;
+				}
+				@Override
+				public boolean canRead() {
+					canReadCalled.set(true);
+					return false;
+				}
+			};
+			Resource resource = new FileSystemResource(file);
+			assertThat(resource.isReadable()).isFalse();
+			assertThat(existsCalled).isTrue();
+			assertThat(canReadCalled).isTrue();
 		}
 
 		@Test
