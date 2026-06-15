@@ -401,6 +401,9 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 						"", clazz, mustBeStatic, 0, ANY_TYPES);
 			}
 		}
+		if (method != null && method.getReturnType() == void.class) {
+			method = null; // not a valid accessor method
+		}
 		return method;
 	}
 
