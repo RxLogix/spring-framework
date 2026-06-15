@@ -85,6 +85,7 @@ public class OpMultiply extends Operator {
 			Number leftNumber = (Number) leftOperand;
 			Number rightNumber = (Number) rightOperand;
 
+			state.trackOperation();
 			if (leftNumber instanceof BigDecimal || rightNumber instanceof BigDecimal) {
 				BigDecimal leftBigDecimal = NumberUtils.convertNumberToTargetClass(leftNumber, BigDecimal.class);
 				BigDecimal rightBigDecimal = NumberUtils.convertNumberToTargetClass(rightNumber, BigDecimal.class);
@@ -122,6 +123,7 @@ public class OpMultiply extends Operator {
 			int count = (Integer) rightOperand;
 			int requestedSize = text.length() * count;
 			checkRepeatedTextSize(requestedSize);
+			state.trackOperation();
 			StringBuilder result = new StringBuilder(requestedSize);
 			for (int i = 0; i < count; i++) {
 				result.append(text);

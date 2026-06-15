@@ -18,6 +18,8 @@ package org.springframework.expression.spel;
 
 import org.springframework.core.SpringProperties;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * Configuration object for the SpEL expression parser.
@@ -36,8 +38,24 @@ public class SpelParserConfiguration {
 	 */
 	private static final int DEFAULT_MAX_EXPRESSION_LENGTH = 10_000;
 
+	/**
+	 * Default maximum number of operations permitted during SpEL expression evaluation: {@value}.
+	 * @since 6.2.19
+	 * @see #SPRING_EXPRESSION_MAX_OPERATIONS_PROPERTY_NAME
+	 */
+	public static final int DEFAULT_MAX_OPERATIONS = 10_000;
+
 	/** System property to configure the default compiler mode for SpEL expression parsers: {@value}. */
 	public static final String SPRING_EXPRESSION_COMPILER_MODE_PROPERTY_NAME = "spring.expression.compiler.mode";
+
+	/**
+	 * System property to configure the default maximum number of operations permitted
+	 * during SpEL expression evaluation: {@value}.
+	 * <p>Can also be configured via the {@link SpringProperties} mechanism.
+	 * @since 6.2.19
+	 * @see #DEFAULT_MAX_OPERATIONS
+	 */
+	public static final String SPRING_EXPRESSION_MAX_OPERATIONS_PROPERTY_NAME = "spring.expression.maxOperations";
 
 
 	private static final SpelCompilerMode defaultCompilerMode;
@@ -61,6 +79,8 @@ public class SpelParserConfiguration {
 	private final int maximumAutoGrowSize;
 
 	private final int maximumExpressionLength;
+
+	private final int maximumOperations;
 
 
 	/**
@@ -128,12 +148,40 @@ public class SpelParserConfiguration {
 	public SpelParserConfiguration(@Nullable SpelCompilerMode compilerMode, @Nullable ClassLoader compilerClassLoader,
 			boolean autoGrowNullReferences, boolean autoGrowCollections, int maximumAutoGrowSize, int maximumExpressionLength) {
 
-		this.compilerMode = (compilerMode != null ? compilerMode : defaultCompilerMode);
+		this((compilerMode != null ? compilerMode : defaultCompilerMode), compilerClassLoader, autoGrowNullReferences,
+				autoGrowCollections, maximumAutoGrowSize, maximumExpressionLength, retrieveMaxOperations());
+	}
+
+	/**
+	 * Create a new {@code SpelParserConfiguration} instance.
+	 * @param compilerMode the compiler mode that parsers using this configuration
+	 * should use; must not be {@code null}
+	 * @param compilerClassLoader the {@code ClassLoader} to use as the basis for
+	 * expression compilation; or {@code null} to use the default {@code ClassLoader}
+	 * @param autoGrowNullReferences if null references should automatically grow
+	 * @param autoGrowCollections if collections should automatically grow
+	 * @param maximumAutoGrowSize the maximum size to which a collection can auto grow
+	 * @param maximumExpressionLength the maximum length of a SpEL expression;
+	 * must be a positive number
+	 * @param maximumOperations the maximum number of operations permitted during
+	 * SpEL expression evaluation; must be a positive number
+	 * @since 6.2.19
+	 */
+	public SpelParserConfiguration(SpelCompilerMode compilerMode, @Nullable ClassLoader compilerClassLoader,
+			boolean autoGrowNullReferences, boolean autoGrowCollections, int maximumAutoGrowSize, int maximumExpressionLength,
+			int maximumOperations) {
+
+		Assert.notNull(compilerMode, "'compilerMode' must not be null");
+		Assert.isTrue(maximumExpressionLength > 0, "'maximumExpressionLength' must be a positive number");
+		Assert.isTrue(maximumOperations > 0, "'maximumOperations' must be a positive number");
+
+		this.compilerMode = compilerMode;
 		this.compilerClassLoader = compilerClassLoader;
 		this.autoGrowNullReferences = autoGrowNullReferences;
 		this.autoGrowCollections = autoGrowCollections;
 		this.maximumAutoGrowSize = maximumAutoGrowSize;
 		this.maximumExpressionLength = maximumExpressionLength;
+		this.maximumOperations = maximumOperations;
 	}
 
 
@@ -179,6 +227,34 @@ public class SpelParserConfiguration {
 	 */
 	public int getMaximumExpressionLength() {
 		return this.maximumExpressionLength;
+	}
+
+	/**
+	 * Return the maximum number of operations permitted during SpEL expression
+	 * evaluation.
+	 * @since 6.2.19
+	 */
+	public int getMaximumOperations() {
+		return this.maximumOperations;
+	}
+
+
+	private static int retrieveMaxOperations() {
+		String value = SpringProperties.getProperty(SPRING_EXPRESSION_MAX_OPERATIONS_PROPERTY_NAME);
+		if (!StringUtils.hasText(value)) {
+			return DEFAULT_MAX_OPERATIONS;
+		}
+
+		try {
+			int maxOperations = Integer.parseInt(value.trim());
+			Assert.isTrue(maxOperations > 0, () -> "Value [" + maxOperations + "] for system property [" +
+					SPRING_EXPRESSION_MAX_OPERATIONS_PROPERTY_NAME + "] must be positive");
+			return maxOperations;
+		}
+		catch (NumberFormatException ex) {
+			throw new IllegalArgumentException("Failed to parse value for system property [" +
+					SPRING_EXPRESSION_MAX_OPERATIONS_PROPERTY_NAME + "]: " + ex.getMessage(), ex);
+		}
 	}
 
 }

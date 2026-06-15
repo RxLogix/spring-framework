@@ -114,6 +114,7 @@ public class InlineMap extends SpelNodeImpl {
 			return this.constant;
 		}
 		else {
+			expressionState.trackOperation();
 			Map<Object, Object> returnValue = new LinkedHashMap<>();
 			int childcount = getChildCount();
 			for (int c = 0; c < childcount; c++) {
@@ -128,6 +129,7 @@ public class InlineMap extends SpelNodeImpl {
 					key = keyChild.getValue(expressionState);
 				}
 				Object value = getChild(c).getValue(expressionState);
+				expressionState.trackOperation();
 				returnValue.put(key,  value);
 			}
 			return new TypedValue(returnValue);
