@@ -16,7 +16,6 @@
 
 package org.springframework.expression.spel.ast;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +26,7 @@ import org.springframework.expression.spel.ExpressionState;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.expression.spel.SpelMessage;
 import org.springframework.expression.spel.support.BooleanTypedValue;
+import org.springframework.util.ConcurrentLruCache;
 
 /**
  * Implements the matches operator. Matches takes two operands:
@@ -41,6 +41,11 @@ import org.springframework.expression.spel.support.BooleanTypedValue;
  */
 public class OperatorMatches extends Operator {
 
+	/**
+	 * Maximum number of compiled regular expressions in the pattern cache.
+	 */
+	public static final int MAX_PATTERN_CACHE_SIZE = 256;
+
 	private static final int PATTERN_ACCESS_THRESHOLD = 1000000;
 
 	/**
@@ -49,25 +54,36 @@ public class OperatorMatches extends Operator {
 	 */
 	private static final int MAX_REGEX_LENGTH = 1000;
 
-	private final ConcurrentMap<String, Pattern> patternCache;
+	private final ConcurrentLruCache<String, Pattern> patternCache;
 
 
 	/**
 	 * Create a new {@link OperatorMatches} instance.
 	 * @deprecated as of Spring Framework 5.2.23 in favor of invoking
-	 * {@link #OperatorMatches(ConcurrentMap, int, int, SpelNodeImpl...)}
+	 * {@link #OperatorMatches(ConcurrentLruCache, int, int, SpelNodeImpl...)}
 	 * with a shared pattern cache instead
 	 */
 	@Deprecated
 	public OperatorMatches(int startPos, int endPos, SpelNodeImpl... operands) {
-		this(new ConcurrentHashMap<>(), startPos, endPos, operands);
+		this(new ConcurrentLruCache<>(MAX_PATTERN_CACHE_SIZE, Pattern::compile), startPos, endPos, operands);
 	}
 
 	/**
 	 * Create a new {@link OperatorMatches} instance with a shared pattern cache.
+	 * <p>As of the CVE-2026-41851 back-port, the supplied {@code patternCacheMap}
+	 * is ignored in favor of an internal bounded LRU cache.
 	 * @since 5.2.23
+	 * @deprecated in favor of {@link #OperatorMatches(ConcurrentLruCache, int, int, SpelNodeImpl...)}
 	 */
-	public OperatorMatches(ConcurrentMap<String, Pattern> patternCache, int startPos, int endPos, SpelNodeImpl... operands) {
+	@Deprecated
+	public OperatorMatches(ConcurrentMap<String, Pattern> patternCacheMap, int startPos, int endPos, SpelNodeImpl... operands) {
+		this(startPos, endPos, operands);
+	}
+
+	/**
+	 * Create a new {@link OperatorMatches} instance with a shared pattern cache.
+	 */
+	public OperatorMatches(ConcurrentLruCache<String, Pattern> patternCache, int startPos, int endPos, SpelNodeImpl... operands) {
 		super("matches", startPos, endPos, operands);
 		this.patternCache = patternCache;
 	}
@@ -97,14 +113,13 @@ public class OperatorMatches extends Operator {
 					SpelMessage.INVALID_SECOND_OPERAND_FOR_MATCHES_OPERATOR, right);
 		}
 		String regex = (String) right;
+		if (regex.length() > MAX_REGEX_LENGTH) {
+			throw new SpelEvaluationException(rightOp.getStartPosition(),
+					SpelMessage.MAX_REGEX_LENGTH_EXCEEDED, MAX_REGEX_LENGTH);
+		}
 
 		try {
 			Pattern pattern = this.patternCache.get(regex);
-			if (pattern == null) {
-				checkRegexLength(regex);
-				pattern = Pattern.compile(regex);
-				this.patternCache.putIfAbsent(regex, pattern);
-			}
 			Matcher matcher = pattern.matcher(new MatcherInput(input, new AccessCount()));
 			return BooleanTypedValue.forValue(matcher.matches());
 		}
@@ -115,13 +130,6 @@ public class OperatorMatches extends Operator {
 		catch (IllegalStateException ex) {
 			throw new SpelEvaluationException(
 					rightOp.getStartPosition(), ex, SpelMessage.FLAWED_PATTERN, right);
-		}
-	}
-
-	private void checkRegexLength(String regex) {
-		if (regex.length() > MAX_REGEX_LENGTH) {
-			throw new SpelEvaluationException(getStartPosition(),
-					SpelMessage.MAX_REGEX_LENGTH_EXCEEDED, MAX_REGEX_LENGTH);
 		}
 	}
 
