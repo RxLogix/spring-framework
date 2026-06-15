@@ -51,6 +51,7 @@ import org.springframework.web.reactive.HandlerResultHandler;
 import org.springframework.web.reactive.accept.RequestedContentTypeResolver;
 import org.springframework.web.reactive.result.HandlerResultHandlerSupport;
 import org.springframework.web.server.NotAcceptableStatusException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 
 /**
@@ -257,11 +258,15 @@ public class ViewResolutionResultHandler extends HandlerResultHandlerSupport imp
 	/**
 	 * Select a default view name when a controller did not specify it.
 	 * Use the request path the leading and trailing slash stripped.
+	 * @throws ResponseStatusException with a 400 error code if the path contains a "redirect:" prefix
 	 */
 	private String getDefaultViewName(ServerWebExchange exchange) {
 		String path = exchange.getRequest().getPath().pathWithinApplication().value();
 		if (path.startsWith("/")) {
 			path = path.substring(1);
+		}
+		if (path.startsWith(UrlBasedViewResolver.REDIRECT_URL_PREFIX)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejected path '" + path + "' with 'redirect:' prefix");
 		}
 		if (path.endsWith("/")) {
 			path = path.substring(0, path.length() - 1);
