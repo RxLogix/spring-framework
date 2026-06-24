@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -89,6 +90,9 @@ public class MappingJackson2MessageConverter implements SmartMessageConverter, B
 	private Map<Class<?>, String> classIdMappings = new HashMap<>();
 
 	@Nullable
+	private String[] trustedPackages;
+
+	@Nullable
 	private ClassLoader beanClassLoader;
 
 
@@ -105,6 +109,19 @@ public class MappingJackson2MessageConverter implements SmartMessageConverter, B
 	public void setObjectMapper(ObjectMapper objectMapper) {
 		Assert.notNull(objectMapper, "ObjectMapper must not be null");
 		this.objectMapper = objectMapper;
+	}
+
+	/**
+	 * Specify the trusted Java packages for deserialization.
+	 * <p>When configured, only classes whose package matches one of the trusted
+	 * packages may be resolved from an incoming message type id; any other type
+	 * id is rejected with a {@link MessageConversionException}. By default no
+	 * restriction is applied (all packages are trusted).
+	 * @param trustedPackages the trusted Java packages for deserialization
+	 * @since 5.3.49
+	 */
+	public void setTrustedPackages(String... trustedPackages) {
+		this.trustedPackages = trustedPackages.clone();
 	}
 
 	/**
@@ -460,6 +477,10 @@ public class MappingJackson2MessageConverter implements SmartMessageConverter, B
 		if (mappedClass != null) {
 			return this.objectMapper.constructType(mappedClass);
 		}
+		if (!isTrustedPackage(typeId)) {
+			throw new MessageConversionException("The class '" + typeId + "' is not in the trusted packages: " +
+					Arrays.toString(this.trustedPackages));
+		}
 		try {
 			Class<?> typeClass = ClassUtils.forName(typeId, this.beanClassLoader);
 			return this.objectMapper.constructType(typeClass);
@@ -467,6 +488,24 @@ public class MappingJackson2MessageConverter implements SmartMessageConverter, B
 		catch (Throwable ex) {
 			throw new MessageConversionException("Failed to resolve type id [" + typeId + "]", ex);
 		}
+	}
+
+	private boolean isTrustedPackage(String requestedType) {
+		if (this.trustedPackages != null) {
+			String packageName = ClassUtils.getPackageName(requestedType);
+			int lastBracketIndex = packageName.lastIndexOf('[');
+			if (lastBracketIndex != -1 && packageName.length() > lastBracketIndex + 1 &&
+					packageName.charAt(lastBracketIndex + 1) == 'L') {
+				packageName = packageName.substring(lastBracketIndex + 2);
+			}
+			for (String trustedPackage : this.trustedPackages) {
+				if (packageName.equals(trustedPackage)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		return true;
 	}
 
 	/**
