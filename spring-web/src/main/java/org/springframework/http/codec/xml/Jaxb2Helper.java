@@ -33,6 +33,7 @@ import jakarta.xml.bind.annotation.XmlType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SynchronousSink;
 
+import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -141,14 +142,18 @@ abstract class Jaxb2Helper {
 	 * </li>
 	 * </ol>
 	 */
-	public static Flux<List<XMLEvent>> split(Flux<XMLEvent> xmlEventFlux, Set<QName> names) {
-		return xmlEventFlux.handle(new SplitHandler(names));
+	public static Flux<List<XMLEvent>> split(
+			Flux<XMLEvent> xmlEventFlux, Set<QName> names, @Nullable XmlEventDecoder.ReceivedByteTracker byteTracker) {
+
+		return xmlEventFlux.handle(new SplitHandler(names, byteTracker));
 	}
 
 
 	private static class SplitHandler implements BiConsumer<XMLEvent, SynchronousSink<List<XMLEvent>>> {
 
 		private final Set<QName> names;
+
+		private final XmlEventDecoder.ReceivedByteTracker byteTracker;
 
 		@Nullable
 		private List<XMLEvent> events;
@@ -157,8 +162,9 @@ abstract class Jaxb2Helper {
 
 		private int barrier = Integer.MAX_VALUE;
 
-		public SplitHandler(Set<QName> names) {
+		public SplitHandler(Set<QName> names, @Nullable XmlEventDecoder.ReceivedByteTracker byteTracker) {
 			this.names = names;
+			this.byteTracker = (byteTracker != null ? byteTracker : XmlEventDecoder.ReceivedByteTracker.NO_OP);
 		}
 
 		@Override
@@ -180,10 +186,18 @@ abstract class Jaxb2Helper {
 			if (event.isEndElement()) {
 				this.elementDepth--;
 				if (this.elementDepth == this.barrier) {
-					this.barrier = Integer.MAX_VALUE;
 					Assert.state(this.events != null, "No XMLEvent List");
 					sink.next(this.events);
+					this.barrier = Integer.MAX_VALUE;
+					this.events = null;
 				}
+			}
+			if (this.events == null) {
+				this.byteTracker.reset();
+			}
+			else if (this.byteTracker.isMaxInMemorySizeExceeded()) {
+				throw new DataBufferLimitException(
+						"Exceeded limit on max bytes per XML node: " + this.byteTracker.getMaxInMemorySize());
 			}
 		}
 	}
