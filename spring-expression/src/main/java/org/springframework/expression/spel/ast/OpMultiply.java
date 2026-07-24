@@ -85,6 +85,7 @@ public class OpMultiply extends Operator {
 			Number leftNumber = (Number) leftOperand;
 			Number rightNumber = (Number) rightOperand;
 
+			state.trackOperation();
 			if (leftNumber instanceof BigDecimal || rightNumber instanceof BigDecimal) {
 				BigDecimal leftBigDecimal = NumberUtils.convertNumberToTargetClass(leftNumber, BigDecimal.class);
 				BigDecimal rightBigDecimal = NumberUtils.convertNumberToTargetClass(rightNumber, BigDecimal.class);
@@ -120,9 +121,9 @@ public class OpMultiply extends Operator {
 		if (leftOperand instanceof String && rightOperand instanceof Integer) {
 			String text = (String) leftOperand;
 			int count = (Integer) rightOperand;
-			int requestedSize = text.length() * count;
-			checkRepeatedTextSize(requestedSize);
-			StringBuilder result = new StringBuilder(requestedSize);
+			checkRepeatedTextSize(text, count);
+			state.trackOperation();
+			StringBuilder result = new StringBuilder(text.length() * count);
 			for (int i = 0; i < count; i++) {
 				result.append(text);
 			}
@@ -132,8 +133,15 @@ public class OpMultiply extends Operator {
 		return state.operate(Operation.MULTIPLY, leftOperand, rightOperand);
 	}
 
-	private void checkRepeatedTextSize(int requestedSize) {
-		if (requestedSize > MAX_REPEATED_TEXT_SIZE) {
+	private void checkRepeatedTextSize(String text, int count) {
+		if (count < 0) {
+			throw new SpelEvaluationException(getStartPosition(),
+					SpelMessage.NEGATIVE_REPEATED_TEXT_COUNT, count);
+		}
+		// Use long arithmetic to detect 32-bit integer overflow that would
+		// otherwise wrap to a small/negative value and bypass the size guard.
+		long requestedSize = (long) text.length() * (long) count;
+		if (requestedSize < 0 || requestedSize > MAX_REPEATED_TEXT_SIZE) {
 			throw new SpelEvaluationException(getStartPosition(),
 					SpelMessage.MAX_REPEATED_TEXT_SIZE_EXCEEDED, MAX_REPEATED_TEXT_SIZE);
 		}

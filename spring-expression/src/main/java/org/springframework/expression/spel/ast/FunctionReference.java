@@ -77,6 +77,7 @@ public class FunctionReference extends SpelNodeImpl {
 		}
 
 		try {
+			state.trackOperation();
 			return executeFunctionJLRMethod(state, (Method) value.getValue());
 		}
 		catch (SpelEvaluationException ex) {

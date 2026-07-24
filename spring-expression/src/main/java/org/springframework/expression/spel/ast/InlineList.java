@@ -93,8 +93,10 @@ public class InlineList extends SpelNodeImpl {
 		}
 		else {
 			int childCount = getChildCount();
+			expressionState.trackOperation();
 			List<Object> returnValue = new ArrayList<>(childCount);
 			for (int c = 0; c < childCount; c++) {
+				expressionState.trackOperation();
 				returnValue.add(getChild(c).getValue(expressionState));
 			}
 			return new TypedValue(returnValue);

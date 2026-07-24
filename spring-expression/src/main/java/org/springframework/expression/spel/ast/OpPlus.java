@@ -73,6 +73,7 @@ public class OpPlus extends Operator {
 		if (this.children.length < 2) {  // if only one operand, then this is unary plus
 			Object operandOne = leftOp.getValueInternal(state).getValue();
 			if (operandOne instanceof Number) {
+				state.trackOperation();
 				if (operandOne instanceof Double) {
 					this.exitTypeDescriptor = "D";
 				}
@@ -99,6 +100,7 @@ public class OpPlus extends Operator {
 			Number leftNumber = (Number) leftOperand;
 			Number rightNumber = (Number) rightOperand;
 
+			state.trackOperation();
 			if (leftNumber instanceof BigDecimal || rightNumber instanceof BigDecimal) {
 				BigDecimal leftBigDecimal = NumberUtils.convertNumberToTargetClass(leftNumber, BigDecimal.class);
 				BigDecimal rightBigDecimal = NumberUtils.convertNumberToTargetClass(rightNumber, BigDecimal.class);
@@ -137,7 +139,7 @@ public class OpPlus extends Operator {
 			String rightString = (String) rightOperand;
 			checkStringLength(leftString);
 			checkStringLength(rightString);
-			return concatenate(leftString, rightString);
+			return concatenate(state, leftString, rightString);
 		}
 
 		if (leftOperand instanceof String) {
@@ -145,7 +147,7 @@ public class OpPlus extends Operator {
 			checkStringLength(leftString);
 			String rightString = (rightOperand == null ? "null" : convertTypedValueToString(operandTwoValue, state));
 			checkStringLength(rightString);
-			return concatenate(leftString, rightString);
+			return concatenate(state, leftString, rightString);
 		}
 
 		if (rightOperand instanceof String) {
@@ -153,23 +155,27 @@ public class OpPlus extends Operator {
 			checkStringLength(rightString);
 			String leftString = (leftOperand == null ? "null" : convertTypedValueToString(operandOneValue, state));
 			checkStringLength(leftString);
-			return concatenate(leftString, rightString);
+			return concatenate(state, leftString, rightString);
 		}
 
 		return state.operate(Operation.ADD, leftOperand, rightOperand);
 	}
 
 	private void checkStringLength(String string) {
-		if (string.length() > MAX_CONCATENATED_STRING_LENGTH) {
+		checkStringLength(string.length());
+	}
+
+	private void checkStringLength(int stringLength) {
+		if (stringLength > MAX_CONCATENATED_STRING_LENGTH) {
 			throw new SpelEvaluationException(getStartPosition(),
 					SpelMessage.MAX_CONCATENATED_STRING_LENGTH_EXCEEDED, MAX_CONCATENATED_STRING_LENGTH);
 		}
 	}
 
-	private TypedValue concatenate(String leftString, String rightString) {
-		String result = leftString + rightString;
-		checkStringLength(result);
-		return new TypedValue(result);
+	private TypedValue concatenate(ExpressionState state, String leftString, String rightString) {
+		checkStringLength(leftString.length() + rightString.length());
+		state.trackOperation();
+		return new TypedValue(leftString + rightString);
 	}
 
 	@Override

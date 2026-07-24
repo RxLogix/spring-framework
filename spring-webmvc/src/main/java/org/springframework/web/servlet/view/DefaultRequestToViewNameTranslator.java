@@ -19,8 +19,10 @@ package org.springframework.web.servlet.view;
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.RequestToViewNameTranslator;
 import org.springframework.web.util.ServletRequestPathUtils;
 import org.springframework.web.util.UrlPathHelper;
@@ -176,7 +178,14 @@ public class DefaultRequestToViewNameTranslator implements RequestToViewNameTran
 	@Override
 	public String getViewName(HttpServletRequest request) {
 		String path = ServletRequestPathUtils.getCachedPathValue(request);
-		return (this.prefix + transformPath(path) + this.suffix);
+		String viewName = this.prefix + transformPath(path) + this.suffix;
+		if (viewName.startsWith(UrlBasedViewResolver.REDIRECT_URL_PREFIX)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejected path '" + path + "' with 'redirect:' prefix");
+		}
+		if (viewName.startsWith(UrlBasedViewResolver.FORWARD_URL_PREFIX)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejected path '" + path + "' with 'forward:' prefix");
+		}
+		return viewName;
 	}
 
 	/**

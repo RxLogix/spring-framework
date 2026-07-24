@@ -48,6 +48,7 @@ public class OperatorPower extends Operator {
 		Object rightOperand = rightOp.getValueInternal(state).getValue();
 
 		if (leftOperand instanceof Number && rightOperand instanceof Number) {
+			state.trackOperation();
 			Number leftNumber = (Number) leftOperand;
 			Number rightNumber = (Number) rightOperand;
 

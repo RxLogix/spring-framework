@@ -107,7 +107,7 @@ public class CachingResourceResolver extends AbstractResourceResolver {
 	protected Resource resolveResourceInternal(@Nullable HttpServletRequest request, String requestPath,
 			List<? extends Resource> locations, ResourceResolverChain chain) {
 
-		String key = computeKey(request, requestPath);
+		String key = computeKey(request, requestPath, locations);
 		Resource resource = this.cache.get(key, Resource.class);
 
 		if (resource != null) {
@@ -125,14 +125,31 @@ public class CachingResourceResolver extends AbstractResourceResolver {
 		return resource;
 	}
 
+	/**
+	 * Compute the caching key for the given request and resource request path.
+	 * @deprecated in favor of {@link #computeKey(HttpServletRequest, String, List)}
+	 */
+	@Deprecated
 	protected String computeKey(@Nullable HttpServletRequest request, String requestPath) {
+		return computeKey(request, requestPath, Collections.emptyList());
+	}
+
+	/**
+	 * Compute the caching key for the given request and resource request path in the configured locations.
+	 */
+	protected String computeKey(@Nullable HttpServletRequest request, String requestPath, List<? extends Resource> locations) {
+		StringBuilder builder = new StringBuilder(RESOLVED_RESOURCE_CACHE_KEY_PREFIX);
+		if (!locations.isEmpty()) {
+			builder.append(Integer.toHexString(locations.hashCode())).append(":");
+		}
+		builder.append(requestPath);
 		if (request != null) {
 			String codingKey = getContentCodingKey(request);
 			if (StringUtils.hasText(codingKey)) {
-				return RESOLVED_RESOURCE_CACHE_KEY_PREFIX + requestPath + "+encoding=" + codingKey;
+				builder.append("+encoding=").append(codingKey);
 			}
 		}
-		return RESOLVED_RESOURCE_CACHE_KEY_PREFIX + requestPath;
+		return builder.toString();
 	}
 
 	@Nullable
