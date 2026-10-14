@@ -60,5 +60,19 @@ void configureDeploymentRepository(Project project) {
 				it.name = "deployment"
 			}
 		}
+		// RxLogix Nexus: configured from the environment so no credentials live in the repo
+		// (same NEXUS_* variables as the 5.3.x fork). Publish with publishAllPublicationsToNexusRepository.
+		String nexusUrl = System.getenv("NEXUS_URL")
+		if (nexusUrl) {
+			publishing.repositories.maven {
+				it.name = "nexus"
+				it.url = nexusUrl
+				it.allowInsecureProtocol = Boolean.parseBoolean(System.getenv("NEXUS_ALLOW_INSECURE_PROTOCOL"))
+				it.credentials {
+					username = System.getenv("NEXUS_USERNAME")
+					password = System.getenv("NEXUS_PASSWORD")
+				}
+			}
+		}
 	}
 }
