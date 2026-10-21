@@ -217,8 +217,7 @@ class JettyCoreServerHttpResponse extends AbstractServerHttpResponse implements 
 		@Nullable
 		@Override
 		public SameSite getSameSite() {
-			// Adding non-null return site breaks tests.
-			return null;
+			return SameSite.from(this.responseCookie.getSameSite());
 		}
 
 		@Override

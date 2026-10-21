@@ -61,8 +61,9 @@ class UrlHandlerFilterTests {
 	@Test
 	void redirect() {
 		HttpStatus status = HttpStatus.PERMANENT_REDIRECT;
-		UrlHandlerFilter filter = UrlHandlerFilter.trailingSlashHandler("/path/*").redirect(status).build();
+		UrlHandlerFilter filter = UrlHandlerFilter.trailingSlashHandler("/**").redirect(status).build();
 
+		// no way to create java.net.URI with leading slashes, so only the regular case is covered here
 		String path = "/path/123";
 		MockServerHttpRequest original = MockServerHttpRequest.get(path + "/").build();
 		ServerWebExchange exchange = MockServerWebExchange.from(original);

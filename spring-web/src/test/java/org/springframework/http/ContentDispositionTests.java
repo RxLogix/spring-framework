@@ -32,6 +32,7 @@ import static org.springframework.http.ContentDisposition.parse;
  *
  * @author Sebastien Deleuze
  * @author Rossen Stoyanchev
+ * @author Brian Clozel
  */
 class ContentDispositionTests {
 
@@ -162,6 +163,15 @@ class ContentDispositionTests {
 	}
 
 	@Test
+	void parseBackslashInName() {
+		String s = "form-data; name=\"foo\\\"bar\"; filename=\"foo.txt\"";
+		ContentDisposition cd = ContentDisposition.parse(s);
+		assertThat(cd.getName()).isEqualTo("foo\"bar");
+		assertThat(cd.getFilename()).isEqualTo("foo.txt");
+		assertThat(cd.toString()).isEqualTo(s);
+	}
+
+	@Test
 	void parseBackslashInLastPosition() {
 		ContentDisposition cd = ContentDisposition.parse("form-data; name=\"foo\"; filename=\"bar\\\"");
 		assertThat(cd.getName()).isEqualTo("foo");
@@ -263,10 +273,22 @@ class ContentDispositionTests {
 		assertThat(
 				ContentDisposition.formData()
 						.name("name")
+						.filename("Äsprïngö.txt", StandardCharsets.UTF_8)
+						.build().toString())
+				.isEqualTo("form-data; name=\"name\"; " +
+						"filename=\"Aespringoe.txt\"; " +
+						"filename*=UTF-8''%C3%84spr%C3%AFng%C3%B6.txt");
+	}
+
+	@Test
+	void formatWithUnmappableCharacters() {
+		assertThat(
+				ContentDisposition.formData()
+						.name("name")
 						.filename("中文.txt", StandardCharsets.UTF_8)
 						.build().toString())
 				.isEqualTo("form-data; name=\"name\"; " +
-						"filename=\"=?UTF-8?Q?=E4=B8=AD=E6=96=87.txt?=\"; " +
+						"filename=\"__.txt\"; " +
 						"filename*=UTF-8''%E4%B8%AD%E6%96%87.txt");
 	}
 
@@ -317,7 +339,7 @@ class ContentDispositionTests {
 	void formatWithUtf8FilenameWithQuotes() {
 		String filename = "\"中文.txt";
 		assertThat(ContentDisposition.formData().filename(filename, StandardCharsets.UTF_8).build().toString())
-				.isEqualTo("form-data; filename=\"=?UTF-8?Q?=22=E4=B8=AD=E6=96=87.txt?=\"; filename*=UTF-8''%22%E4%B8%AD%E6%96%87.txt");
+				.isEqualTo("form-data; filename=\"\\\"__.txt\"; filename*=UTF-8''%22%E4%B8%AD%E6%96%87.txt");
 	}
 
 	@Test
@@ -348,14 +370,14 @@ class ContentDispositionTests {
 				.build();
 		String result = cd.toString();
 		assertThat(result).isEqualTo("attachment; " +
-						"filename=\"=?UTF-8?Q?filename_with_=3F=E9=97=AE=E5=8F=B7.txt?=\"; " +
+						"filename=\"filename with ?__.txt\"; " +
 						"filename*=UTF-8''filename%20with%20%3F%E9%97%AE%E5%8F%B7.txt");
 
 		String[] parts = result.split("; ");
 
 		String quotedPrintableFilename = parts[0] + "; " + parts[1];
 		assertThat(ContentDisposition.parse(quotedPrintableFilename).getFilename())
-				.isEqualTo(filename);
+				.isEqualTo("filename with ?__.txt");
 
 		String rfc5987Filename = parts[0] + "; " + parts[2];
 		assertThat(ContentDisposition.parse(rfc5987Filename).getFilename())
